@@ -10,6 +10,7 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import api from "../config/api";
 
 interface Product {
@@ -57,14 +58,25 @@ const AddEditOrder: React.FC = () => {
     if (orderNumber) {
       api
         .put(`/orders/${orderNumber}`, data)
-        .then(() => navigate("/my-orders"))
+        .then(() => {
+          navigate("/my-orders");
+          toast.success("Order updated");
+        })
         .catch(error => console.error("Error updating order:", error));
-    } else {
+    } else if (orderNumberState) {
       api
         .post("/orders", data)
-        .then(() => navigate("/my-orders"))
+        .then(() => {
+          navigate("/my-orders");
+          toast.success("Order created");
+        })
         .catch(error => console.error("Error creating order:", error));
     }
+    if (!orderNumberState) {
+      toast.error("No order number provided");
+      return;
+    }
+    return;
   };
 
   const handleQuantityChange = (productId: number, quantity: number) => {

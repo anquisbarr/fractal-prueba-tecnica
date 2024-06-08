@@ -1,5 +1,6 @@
 import type React from "react";
 import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import { Toaster } from "sonner";
 import Navbar from "../components/nav-bar";
 import AddEditOrder from "../pages/add-edit-order";
 import MyOrders from "../pages/my-orders";
@@ -18,6 +19,7 @@ const App: React.FC = () => {
             <Route path="/add-order/:orderNumber" element={<AddEditOrder />} />
           </Routes>
         </main>
+        <Toaster richColors />
       </div>
     </Router>
   );
