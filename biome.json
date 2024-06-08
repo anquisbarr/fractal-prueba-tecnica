@@ -4,7 +4,11 @@
     "enabled": true
   },
   "files": {
-    "ignore": []
+    "ignore": [
+      "./packages/client/vite.config.ts",
+      "./packages/client/index.html",
+      "./packages/client/dist/**/*"
+    ]
   },
   "linter": {
     "enabled": true,

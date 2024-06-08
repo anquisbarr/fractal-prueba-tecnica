@@ -6,6 +6,7 @@ import { orderProducts, orders } from "../db/schema";
 
 interface CreateOrderRequest extends Request {
   body: {
+    orderNumber: string;
     productsData?: ProductData[];
   };
 }
@@ -24,15 +25,13 @@ export const getOrders = async (req: Request, res: Response) => {
 };
 
 export const createOrder = async (req: CreateOrderRequest, res: Response) => {
-  const { productsData } = req.body;
+  const { orderNumber, productsData } = req.body;
 
   if (!productsData || productsData.length === 0) {
     return res
       .status(400)
       .json({ message: "productsData is required and should not be empty" });
   }
-
-  const orderNumber = Math.floor(Math.random() * 100000).toString();
 
   try {
     const insertResult = await db.insert(orders).values({
