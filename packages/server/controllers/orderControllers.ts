@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { Request, Response } from "express";
 import type { ProductData } from "../../../types/products";
 import { db } from "../db/config";
-import { orderProducts, orders } from "../db/schema";
+import { orderProducts, orders, products } from "../db/schema";
 
 interface CreateOrderRequest extends Request {
   body: {
@@ -34,17 +34,34 @@ export const createOrder = async (req: CreateOrderRequest, res: Response) => {
   }
 
   try {
+    const productIds = productsData.map(p => p.productId);
+    const dbProducts = await db
+      .select()
+      .from(products)
+      .where(inArray(products.id, productIds));
+
+    // Calculate the final price
+    const finalPrice = productsData
+      .reduce((total: number, product: ProductData) => {
+        const dbProduct = dbProducts.find(p => p.id === product.productId);
+        if (!dbProduct) {
+          throw new Error(`Product with id ${product.productId} not found`);
+        }
+        const unitPrice = Number(dbProduct.unitPrice);
+        return total + unitPrice * product.quantity;
+      }, 0)
+      .toFixed(2);
+
+    const numberOfProducts = productsData.reduce(
+      (total, product) => total + product.quantity,
+      0,
+    );
+
     const insertResult = await db.insert(orders).values({
       orderNumber,
       date: new Date(),
-      numberOfProducts: productsData.length,
-      finalPrice: productsData
-        .reduce(
-          (total: number, product: ProductData) =>
-            total + product.unitPrice * product.qty,
-          0,
-        )
-        .toFixed(2), // Convertimos el total a cadena con dos decimales
+      numberOfProducts,
+      finalPrice: Number(finalPrice).toFixed(2),
       status: "Pending",
     });
 
@@ -53,8 +70,8 @@ export const createOrder = async (req: CreateOrderRequest, res: Response) => {
     for (const product of productsData) {
       await db.insert(orderProducts).values({
         orderId,
-        productId: product.id,
-        quantity: product.qty,
+        productId: product.productId,
+        quantity: product.quantity,
       });
     }
 

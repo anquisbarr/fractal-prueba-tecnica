@@ -1,5 +1,4 @@
 export interface ProductData {
-  id: number;
-  unitPrice: number;
-  qty: number;
+  productId: number;
+  quantity: number;
 }
