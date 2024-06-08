@@ -56,7 +56,15 @@ const MyOrders: React.FC = () => {
             <TableRow key={order.id}>
               <TableCell>{order.id}</TableCell>
               <TableCell>{order.orderNumber}</TableCell>
-              <TableCell>{order.date}</TableCell>
+              <TableCell>
+                {new Date(order.date).toLocaleDateString("es-PE", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "2-digit",
+                  minute: "2-digit",
+                  hour: "2-digit",
+                })}
+              </TableCell>
               <TableCell>{order.numberOfProducts}</TableCell>
               <TableCell>{order.finalPrice}</TableCell>
               <TableCell>
