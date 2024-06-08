@@ -18,6 +18,9 @@ const Navbar: FC = () => {
         <Button color="inherit" component={Link} to="/add-order">
           Add/Edit Order
         </Button>
+        <Button color="inherit" component={Link} to="/products">
+          Products
+        </Button>
       </Toolbar>
     </AppBar>
   );

@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import Navbar from "../components/nav-bar";
 import AddEditOrder from "../pages/add-edit-order";
 import MyOrders from "../pages/my-orders";
+import Products from "../pages/products";
 
 const App: React.FC = () => {
   return (
@@ -17,6 +18,7 @@ const App: React.FC = () => {
             <Route path="/my-orders" element={<MyOrders />} />
             <Route path="/add-order" element={<AddEditOrder />} />
             <Route path="/add-order/:orderNumber" element={<AddEditOrder />} />
+            <Route path="/products" element={<Products />} />
           </Routes>
         </main>
         <Toaster richColors />
