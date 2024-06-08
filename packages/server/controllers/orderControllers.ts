@@ -11,6 +11,37 @@ interface CreateOrderRequest extends Request {
   };
 }
 
+export const getOrderByOrderNumber = async (req: Request, res: Response) => {
+  const { orderNumber } = req.params;
+
+  try {
+    const order = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.orderNumber, orderNumber))
+      .limit(1)
+      .execute();
+
+    if (!order || order.length === 0) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const orderProductsList = await db
+      .select()
+      .from(orderProducts)
+      .where(eq(orderProducts.orderId, order[0].id))
+      .execute();
+
+    res.json({ ...order[0], productsData: orderProductsList });
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(500).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+};
+
 export const getOrders = async (req: Request, res: Response) => {
   try {
     const allOrders = await db.select().from(orders);

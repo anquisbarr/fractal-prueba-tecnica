@@ -25,22 +25,22 @@ interface OrderProduct {
 }
 
 const AddEditOrder: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { orderNumber } = useParams<{ orderNumber: string }>();
   const navigate = useNavigate();
-  const [orderNumber, setOrderNumber] = useState("");
+  const [orderNumberState, setOrderNumber] = useState(orderNumber || "");
   const [products, setProducts] = useState<Product[]>([]);
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
 
   useEffect(() => {
-    if (id) {
+    if (orderNumber) {
       api
-        .get(`/orders/${id}`)
+        .get(`/orders/${orderNumber}`)
         .then(response => {
           setOrderNumber(response.data.orderNumber);
           setOrderProducts(
-            response.data.productsData.map((product: Product) => ({
-              productId: product.id,
-              quantity: product.qty,
+            response.data.productsData.map((product: OrderProduct) => ({
+              productId: product.productId,
+              quantity: product.quantity,
             })),
           );
         })
@@ -50,13 +50,13 @@ const AddEditOrder: React.FC = () => {
       .get("/products")
       .then(response => setProducts(response.data))
       .catch(error => console.error("Error fetching products:", error));
-  }, [id]);
+  }, [orderNumber]);
 
   const handleSave = () => {
-    const data = { orderNumber, productsData: orderProducts };
-    if (id) {
+    const data = { orderNumber: orderNumberState, productsData: orderProducts };
+    if (orderNumber) {
       api
-        .put(`/orders/${id}`, data)
+        .put(`/orders/${orderNumber}`, data)
         .then(() => navigate("/my-orders"))
         .catch(error => console.error("Error updating order:", error));
     } else {
@@ -81,10 +81,10 @@ const AddEditOrder: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen">
-      <h1>{id ? "Edit Order" : "Add Order"}</h1>
+      <h1>{orderNumber ? "Edit Order" : "Add Order"}</h1>
       <TextField
         label="Order Number"
-        value={orderNumber}
+        value={orderNumberState}
         onChange={e => setOrderNumber(e.target.value)}
         variant="outlined"
       />
@@ -126,7 +126,7 @@ const AddEditOrder: React.FC = () => {
         </TableBody>
       </Table>
       <Button onClick={handleSave} variant="contained">
-        {id ? "Update Order" : "Create Order"}
+        {orderNumber ? "Update Order" : "Create Order"}
       </Button>
     </div>
   );

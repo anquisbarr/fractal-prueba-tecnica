@@ -68,7 +68,7 @@ const MyOrders: React.FC = () => {
               <TableCell>{order.numberOfProducts}</TableCell>
               <TableCell>{order.finalPrice}</TableCell>
               <TableCell>
-                <Button component={Link} to={`/add-order/${order.id}`}>
+                <Button component={Link} to={`/add-order/${order.orderNumber}`}>
                   Edit
                 </Button>
                 <Button onClick={() => handleDelete(order.id)}>Delete</Button>
