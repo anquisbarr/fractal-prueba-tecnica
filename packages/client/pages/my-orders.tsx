@@ -1,5 +1,9 @@
 import {
   Button,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -10,7 +14,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import AlertModal from "../components/alert-modal";
+import DeleteAlertModal from "../components/delete-alert-modal";
 import api from "../config/api";
 
 interface Order {
@@ -55,8 +59,28 @@ const MyOrders: React.FC = () => {
         setOrders(orders.filter(order => order.id !== id));
         toast.success("Order deleted");
       })
-      .catch(error => console.error("Error deleting order:", error));
+      .catch(error => {
+        toast.error("Error deleting order");
+        console.error("Error deleting order:", error);
+      });
     handleClose();
+  };
+
+  const handleStatusChange = (orderNumber: string, status: string) => {
+    api
+      .patch(`/orders/${orderNumber}/status`, { status })
+      .then(() => {
+        toast.success("Order status updated successfully");
+        setOrders(prevOrders =>
+          prevOrders.map(order =>
+            order.orderNumber === orderNumber ? { ...order, status } : order,
+          ),
+        );
+      })
+      .catch(error => {
+        toast.error("Error updating order status");
+        console.error("Error updating order status:", error);
+      });
   };
 
   return (
@@ -70,6 +94,7 @@ const MyOrders: React.FC = () => {
             <TableCell>Date</TableCell>
             <TableCell># Products</TableCell>
             <TableCell>Final Price</TableCell>
+            <TableCell>Status</TableCell>
             <TableCell>Options</TableCell>
           </TableRow>
         </TableHead>
@@ -90,13 +115,32 @@ const MyOrders: React.FC = () => {
               <TableCell>{order.numberOfProducts}</TableCell>
               <TableCell>{order.finalPrice}</TableCell>
               <TableCell>
+                <FormControl variant="outlined" size="small">
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={order.status}
+                    onChange={e =>
+                      handleStatusChange(
+                        order.orderNumber,
+                        e.target.value as string,
+                      )
+                    }
+                    label="Status"
+                  >
+                    <MenuItem value="Pending">Pending</MenuItem>
+                    <MenuItem value="InProgress">InProgress</MenuItem>
+                    <MenuItem value="Completed">Completed</MenuItem>
+                  </Select>
+                </FormControl>
+              </TableCell>
+              <TableCell>
                 <Button component={Link} to={`/add-order/${order.orderNumber}`}>
                   Edit
                 </Button>
                 <Button onClick={() => handleClickOpen(order.id)}>
                   Delete
                 </Button>
-                <AlertModal
+                <DeleteAlertModal
                   open={open}
                   handleClose={handleClose}
                   handleDelete={handleDelete}

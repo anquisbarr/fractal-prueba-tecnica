@@ -8,19 +8,19 @@ import {
 } from "@mui/material";
 import type { FC } from "react";
 
-interface AlertModalProps {
+interface DeleteAlertProps {
   open: boolean;
   handleClose: () => void;
   handleDelete: (id: number) => void;
   toBeDeleted: number | null;
 }
 
-const AlertModal: FC<AlertModalProps> = ({
+const DeleteAlert: FC<DeleteAlertProps> = ({
   open,
   handleClose,
   handleDelete,
   toBeDeleted,
-}: AlertModalProps) => {
+}: DeleteAlertProps) => {
   return (
     <>
       <Dialog
@@ -46,4 +46,4 @@ const AlertModal: FC<AlertModalProps> = ({
   );
 };
 
-export default AlertModal;
+export default DeleteAlert;

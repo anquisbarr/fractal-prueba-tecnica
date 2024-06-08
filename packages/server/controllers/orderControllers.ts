@@ -275,6 +275,43 @@ export const updateOrder = async (req: CreateOrderRequest, res: Response) => {
   }
 };
 
+export const updateOrderStatus = async (req: Request, res: Response) => {
+  const { orderNumber } = req.params;
+  const { status } = req.body;
+
+  if (!status) {
+    return res.status(400).json({ message: "Status is required" });
+  }
+
+  try {
+    const existingOrder = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.orderNumber, orderNumber))
+      .limit(1)
+      .execute();
+
+    if (!existingOrder || existingOrder.length === 0) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    await db
+      .update(orders)
+      .set({
+        status,
+      })
+      .where(eq(orders.orderNumber, orderNumber));
+
+    res.status(200).json({ message: "Order status updated successfully" });
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(500).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+};
+
 export const deleteOrder = async (req: Request, res: Response) => {
   const { id } = req.params;
 
