@@ -9,6 +9,9 @@ const App: React.FC = () => {
           <Navbar />
         </header>
         <main className="flex-grow p-4 bg-gray-100">
+          <Routes>
+            <Route path="/my-orders" element={<MyOrders />} />
+          </Routes>
         </main>
       </div>
     </Router>
