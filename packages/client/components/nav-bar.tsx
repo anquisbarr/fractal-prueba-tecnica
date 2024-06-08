@@ -9,7 +9,12 @@ const Navbar: FC = () => {
   return (
     <AppBar position="static">
       <Toolbar>
-        <Typography variant="h6" style={{ flexGrow: 1 }}>
+        <Typography
+          variant="h6"
+          style={{ flexGrow: 1 }}
+          component={Link}
+          to={"/my-orders"}
+        >
           Orders App
         </Typography>
         <Button color="inherit" component={Link} to="/my-orders">

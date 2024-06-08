@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import DeleteAlertModal from "../components/delete-alert-modal";
+import EditProductModal from "../components/edit-product-modal";
 import NewProductModal from "../components/new-product-modal";
 import api from "../config/api";
 import type { Product } from "../types/product";
@@ -16,8 +17,10 @@ import type { Product } from "../types/product";
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [open, setOpen] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [toBeDeleted, setToBeDeleted] = useState<number | null>(null);
+  const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
   const [newProduct, setNewProduct] = useState<Product>({
     id: 0,
     name: "",
@@ -42,6 +45,15 @@ const Products = () => {
 
   const handleClose = () => {
     setOpen(false);
+  };
+
+  const handleClickOpenEditModal = (product: Product) => {
+    setCurrentProduct(product);
+    setOpenEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setOpenEditModal(false);
   };
 
   const handleClickOpenDeleteModal = (id: number) => {
@@ -95,6 +107,20 @@ const Products = () => {
     handleClose();
   };
 
+  const handleUpdate = (updatedProduct: Product) => {
+    api
+      .put(`/products/${updatedProduct.id}`, updatedProduct)
+      .then(() => {
+        fetchProducts();
+        toast.success("Product updated");
+      })
+      .catch(error => {
+        toast.error("Error updating product");
+        console.error("Error updating product:", error);
+      });
+    handleCloseEditModal();
+  };
+
   return (
     <div>
       <h1>Products</h1>
@@ -120,6 +146,12 @@ const Products = () => {
               <TableCell>{product.qty}</TableCell>
               <TableCell>
                 <Button
+                  onClick={() => handleClickOpenEditModal(product)}
+                  color="primary"
+                >
+                  Edit
+                </Button>
+                <Button
                   onClick={() => handleClickOpenDeleteModal(product.id)}
                   style={{ color: "#f44336" }}
                 >
@@ -143,6 +175,14 @@ const Products = () => {
         newProduct={newProduct}
         setNewProduct={setNewProduct}
       />
+      {currentProduct && (
+        <EditProductModal
+          open={openEditModal}
+          handleClose={handleCloseEditModal}
+          handleUpdate={handleUpdate}
+          product={currentProduct}
+        />
+      )}
     </div>
   );
 };
