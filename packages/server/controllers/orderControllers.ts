@@ -47,7 +47,7 @@ export const createOrder = async (req: CreateOrderRequest, res: Response) => {
         if (!dbProduct) {
           throw new Error(`Product with id ${product.productId} not found`);
         }
-        const unitPrice = Number(dbProduct.unitPrice);
+        const unitPrice = Number.parseFloat(dbProduct.unitPrice);
         return total + unitPrice * product.quantity;
       }, 0)
       .toFixed(2);
@@ -61,7 +61,7 @@ export const createOrder = async (req: CreateOrderRequest, res: Response) => {
       orderNumber,
       date: new Date(),
       numberOfProducts,
-      finalPrice: Number(finalPrice).toFixed(2),
+      finalPrice: Number.parseFloat(finalPrice).toString(),
       status: "Pending",
     });
 
@@ -73,6 +73,30 @@ export const createOrder = async (req: CreateOrderRequest, res: Response) => {
         productId: product.productId,
         quantity: product.quantity,
       });
+
+      // Ensure quantity is a number before updating
+      const dbProduct = dbProducts.find(p => p.id === product.productId);
+      if (!dbProduct) {
+        throw new Error(`Product with id ${product.productId} not found`);
+      }
+
+      const updatedQty =
+        typeof dbProduct.qty === "string"
+          ? Number.parseFloat(dbProduct.qty) - product.quantity
+          : dbProduct.qty - product.quantity;
+
+      if (Number.isNaN(updatedQty)) {
+        throw new Error(
+          `Invalid quantity for product with id ${product.productId}`,
+        );
+      }
+
+      await db
+        .update(products)
+        .set({
+          qty: updatedQty,
+        })
+        .where(eq(products.id, product.productId));
     }
 
     res.status(201).json({ message: "Order created successfully", orderId });

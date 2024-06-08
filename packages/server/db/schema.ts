@@ -23,7 +23,7 @@ export const products = mysqlTable("products", {
 export const orders = mysqlTable("orders", {
   id: int("id").primaryKey().autoincrement(),
   orderNumber: varchar("order_number", { length: 256 }).notNull(),
-  date: date("date").notNull().default(new Date()),
+  date: date("date").notNull(),
   numberOfProducts: int("number_of_products").notNull().default(0),
   finalPrice: decimal("final_price", {
     precision: 10,
