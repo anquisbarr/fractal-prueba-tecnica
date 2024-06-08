@@ -9,6 +9,8 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import AlertModal from "../components/alert-modal";
 import api from "../config/api";
 
 interface Order {
@@ -22,6 +24,8 @@ interface Order {
 
 const MyOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [open, setOpen] = useState(false);
+  const [toBeDeleted, setToBeDeleted] = useState<number | null>(null);
 
   useEffect(() => {
     api
@@ -30,11 +34,29 @@ const MyOrders: React.FC = () => {
       .catch(error => console.error("Error fetching orders:", error));
   }, []);
 
+  const handleClickOpen = (id: number) => {
+    setToBeDeleted(id);
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+
   const handleDelete = (id: number) => {
+    if (toBeDeleted === null) {
+      handleClose();
+      toast.error("No order selected");
+      return;
+    }
     api
       .delete(`/orders/${id}`)
-      .then(() => setOrders(orders.filter(order => order.id !== id)))
+      .then(() => {
+        setOrders(orders.filter(order => order.id !== id));
+        toast.success("Order deleted");
+      })
       .catch(error => console.error("Error deleting order:", error));
+    handleClose();
   };
 
   return (
@@ -71,7 +93,15 @@ const MyOrders: React.FC = () => {
                 <Button component={Link} to={`/add-order/${order.orderNumber}`}>
                   Edit
                 </Button>
-                <Button onClick={() => handleDelete(order.id)}>Delete</Button>
+                <Button onClick={() => handleClickOpen(order.id)}>
+                  Delete
+                </Button>
+                <AlertModal
+                  open={open}
+                  handleClose={handleClose}
+                  handleDelete={handleDelete}
+                  toBeDeleted={toBeDeleted}
+                />
               </TableCell>
             </TableRow>
           ))}
