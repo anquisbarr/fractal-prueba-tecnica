@@ -92,6 +92,7 @@ const AddEditOrder: React.FC = () => {
         <TableHead>
           <TableRow>
             <TableCell>Product</TableCell>
+            <TableCell>Available</TableCell>
             <TableCell>Quantity</TableCell>
             <TableCell>Unit Price</TableCell>
           </TableRow>
@@ -100,6 +101,7 @@ const AddEditOrder: React.FC = () => {
           {products.map(product => (
             <TableRow key={product.id}>
               <TableCell>{product.name}</TableCell>
+              <TableCell>{product.qty}</TableCell>
               <TableCell>
                 <TextField
                   type="number"
@@ -112,6 +114,10 @@ const AddEditOrder: React.FC = () => {
                     handleQuantityChange(product.id, quantity);
                   }}
                   variant="outlined"
+                  inputProps={{
+                    max: product.qty,
+                    min: 0,
+                  }}
                 />
               </TableCell>
               <TableCell>{product.unitPrice}</TableCell>
