@@ -60,8 +60,9 @@ const MyOrders: React.FC = () => {
         toast.success("Order deleted");
       })
       .catch(error => {
-        toast.error("Error deleting order");
-        console.error("Error deleting order:", error);
+        if (error.response) {
+          toast.error(`${error.response.data.message}`);
+        }
       });
     handleClose();
   };
@@ -78,8 +79,7 @@ const MyOrders: React.FC = () => {
         );
       })
       .catch(error => {
-        toast.error("Error updating order status");
-        console.error("Error updating order status:", error);
+        toast.error(`${error.message}`);
       });
   };
 
@@ -126,6 +126,7 @@ const MyOrders: React.FC = () => {
                       )
                     }
                     label="Status"
+                    disabled={order.status === "Completed"}
                   >
                     <MenuItem value="Pending">Pending</MenuItem>
                     <MenuItem value="InProgress">InProgress</MenuItem>
@@ -134,7 +135,11 @@ const MyOrders: React.FC = () => {
                 </FormControl>
               </TableCell>
               <TableCell>
-                <Button component={Link} to={`/add-order/${order.orderNumber}`}>
+                <Button
+                  component={Link}
+                  to={`/add-order/${order.orderNumber}`}
+                  disabled={order.status === "Completed"}
+                >
                   Edit
                 </Button>
                 <Button onClick={() => handleClickOpen(order.id)}>

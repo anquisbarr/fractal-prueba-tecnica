@@ -295,6 +295,12 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    if (existingOrder[0].status === "Completed") {
+      return res
+        .status(400)
+        .json({ message: "Completed orders cannot be modified" });
+    }
+
     await db
       .update(orders)
       .set({
@@ -316,11 +322,30 @@ export const deleteOrder = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    // Elimina las relaciones de order_products primero
+    if (!id) {
+      return res.status(400).json({ message: "Order ID is required" });
+    }
+
+    const existingOrder = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, Number.parseInt(id)))
+      .limit(1)
+      .execute();
+
+    if (!existingOrder || existingOrder.length === 0) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (existingOrder[0].status === "Completed") {
+      return res
+        .status(400)
+        .json({ message: "Completed orders cannot be modified" });
+    }
     await db
       .delete(orderProducts)
       .where(eq(orderProducts.orderId, Number.parseInt(id)));
-    // Luego elimina la orden
+
     await db.delete(orders).where(eq(orders.id, Number.parseInt(id)));
     res.json({ message: "Order deleted successfully" });
   } catch (error) {
