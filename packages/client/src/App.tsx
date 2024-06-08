@@ -11,6 +11,7 @@ const App: React.FC = () => {
         <main className="flex-grow p-4 bg-gray-100">
           <Routes>
             <Route path="/my-orders" element={<MyOrders />} />
+            <Route path="/add-order" element={<AddEditOrder />} />
           </Routes>
         </main>
       </div>
