@@ -51,6 +51,23 @@ export const createProduct = async (
   }
 };
 
+export const updateProduct = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { name, unitPrice, qty } = req.body;
+  try {
+    await db
+      .update(products)
+      .set({ name, unitPrice, qty })
+      .where(eq(products.id, Number.parseInt(id)));
+    res.status(200).json({ message: "Product updated" });
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(500).json({ message: error.message });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+};
+
 export const deleteProduct = async (req: Request, res: Response) => {
   const { id } = req.params;
 
