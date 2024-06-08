@@ -1,5 +1,10 @@
 import type React from "react";
-import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  BrowserRouter as Router,
+  Routes,
+} from "react-router-dom";
 import { Toaster } from "sonner";
 import Navbar from "../components/nav-bar";
 import AddEditOrder from "../pages/add-edit-order";
@@ -19,6 +24,7 @@ const App: React.FC = () => {
             <Route path="/add-order" element={<AddEditOrder />} />
             <Route path="/add-order/:orderNumber" element={<AddEditOrder />} />
             <Route path="/products" element={<Products />} />
+            <Route path="*" element={<Navigate to="/my-orders" />} />
           </Routes>
         </main>
         <Toaster richColors />
