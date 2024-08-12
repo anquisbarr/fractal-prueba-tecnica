@@ -41,7 +41,9 @@ export const orderProducts = mysqlTable(
     productId: int("product_id").notNull(),
     quantity: int("quantity").notNull().default(1),
   },
-  t => ({ pk: primaryKey({ columns: [t.orderId, t.productId] }) }),
+  (table) => ({
+    pk: primaryKey(table.orderId, table.productId), // Use primaryKey function to define composite key
+  })
 );
 
 export const productsRelations = relations(products, ({ many }) => ({
@@ -53,12 +55,12 @@ export const ordersRelations = relations(orders, ({ many }) => ({
 }));
 
 export const orderProductsRelations = relations(orderProducts, ({ one }) => ({
-  orders: one(products, {
-    fields: [orderProducts.productId],
-    references: [products.id],
-  }),
-  products: one(orders, {
+  orders: one(orders, {
     fields: [orderProducts.orderId],
     references: [orders.id],
+  }),
+  products: one(products, {
+    fields: [orderProducts.productId],
+    references: [products.id],
   }),
 }));

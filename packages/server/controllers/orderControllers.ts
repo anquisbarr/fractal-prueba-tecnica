@@ -79,6 +79,9 @@ export const createOrder = async (req: CreateOrderRequest, res: Response) => {
           throw new Error(`Product with id ${product.productId} not found`);
         }
         const unitPrice = Number.parseFloat(dbProduct.unitPrice);
+        if (Number.isNaN(unitPrice)) {
+          throw new Error(`Invalid unit price for product with id ${product.productId}`);
+        }
         return total + unitPrice * product.quantity;
       }, 0)
       .toFixed(2);
@@ -88,15 +91,15 @@ export const createOrder = async (req: CreateOrderRequest, res: Response) => {
       0,
     );
 
-    const insertResult = await db.insert(orders).values({
+    const [insertResult] = await db.insert(orders).values({
       orderNumber,
       date: new Date(),
       numberOfProducts,
       finalPrice: Number.parseFloat(finalPrice).toString(),
       status: "Pending",
-    });
+    }).execute();
 
-    const orderId = Number(insertResult.insertId);
+    const orderId = insertResult.insertId; // Capturar el ID de la inserción
 
     for (const product of productsData) {
       await db.insert(orderProducts).values({

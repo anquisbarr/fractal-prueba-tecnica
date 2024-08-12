@@ -7,6 +7,8 @@ export const env = createEnv({
     DATABASE_USERNAME: z.string().min(1),
     DATABASE_PASSWORD: z.string().min(1),
     DATABASE_URL: z.string().url(),
+    DATABASE_NAME: z.string().min(1),
+    DATABASE_PORT: z.string().min(1),
   },
 
   /**
@@ -26,6 +28,8 @@ export const env = createEnv({
     DATABASE_USERNAME: process.env.DATABASE_USERNAME,
     DATABASE_PASSWORD: process.env.DATABASE_PASSWORD,
     DATABASE_URL: process.env.DATABASE_URL,
+    DATABASE_NAME: process.env.DATABASE_NAME,
+    DATABASE_PORT: process.env.DATABASE_PORT,
   },
 
   /**
