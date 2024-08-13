@@ -8,50 +8,21 @@ import {
   TextField,
 } from "@mui/material";
 import type React from "react";
-import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import api from "../config/api";
-
-interface Product {
-  id: number;
-  name: string;
-  unitPrice: number;
-  qty: number;
-}
-
-interface OrderProduct {
-  productId: number;
-  quantity: number;
-}
+import { useProductsOrder } from "../hooks/useProductsOrder";
 
 const AddEditOrder: React.FC = () => {
   const { orderNumber } = useParams<{ orderNumber: string }>();
   const navigate = useNavigate();
-  const [orderNumberState, setOrderNumber] = useState(orderNumber || "");
-  const [products, setProducts] = useState<Product[]>([]);
-  const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
-
-  useEffect(() => {
-    if (orderNumber) {
-      api
-        .get(`/orders/${orderNumber}`)
-        .then(response => {
-          setOrderNumber(response.data.orderNumber);
-          setOrderProducts(
-            response.data.productsData.map((product: OrderProduct) => ({
-              productId: product.productId,
-              quantity: product.quantity,
-            })),
-          );
-        })
-        .catch(error => console.error("Error fetching order:", error));
-    }
-    api
-      .get("/products")
-      .then(response => setProducts(response.data))
-      .catch(error => console.error("Error fetching products:", error));
-  }, [orderNumber]);
+  const {
+    products,
+    orderNumberState,
+    orderProducts,
+    setOrderProducts,
+    setOrderNumber,
+  } = useProductsOrder(orderNumber);
 
   const handleSave = () => {
     const data = { orderNumber: orderNumberState, productsData: orderProducts };
@@ -64,6 +35,10 @@ const AddEditOrder: React.FC = () => {
         })
         .catch(error => console.error("Error updating order:", error));
     } else if (orderNumberState) {
+      if (orderProducts.length === 0) {
+        toast.error("No products added");
+        return;
+      }
       api
         .post("/orders", data)
         .then(() => {
