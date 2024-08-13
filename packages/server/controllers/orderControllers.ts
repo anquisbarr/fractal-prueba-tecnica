@@ -80,7 +80,9 @@ export const createOrder = async (req: CreateOrderRequest, res: Response) => {
         }
         const unitPrice = Number.parseFloat(dbProduct.unitPrice);
         if (Number.isNaN(unitPrice)) {
-          throw new Error(`Invalid unit price for product with id ${product.productId}`);
+          throw new Error(
+            `Invalid unit price for product with id ${product.productId}`,
+          );
         }
         return total + unitPrice * product.quantity;
       }, 0)
@@ -91,13 +93,16 @@ export const createOrder = async (req: CreateOrderRequest, res: Response) => {
       0,
     );
 
-    const [insertResult] = await db.insert(orders).values({
-      orderNumber,
-      date: new Date(),
-      numberOfProducts,
-      finalPrice: Number.parseFloat(finalPrice).toString(),
-      status: "Pending",
-    }).execute();
+    const [insertResult] = await db
+      .insert(orders)
+      .values({
+        orderNumber,
+        date: new Date(),
+        numberOfProducts,
+        finalPrice: Number.parseFloat(finalPrice).toString(),
+        status: "Pending",
+      })
+      .execute();
 
     const orderId = insertResult.insertId; // Capturar el ID de la inserción
 
@@ -174,36 +179,37 @@ export const updateOrder = async (req: CreateOrderRequest, res: Response) => {
       .where(eq(orderProducts.orderId, orderId))
       .execute();
 
-    // Adjust the product quantities before deleting the order products
-    for (const existingProduct of existingOrderProducts) {
-      const dbProduct = await db
-        .select()
-        .from(products)
-        .where(eq(products.id, existingProduct.productId))
-        .limit(1)
-        .execute();
+    await Promise.allSettled(
+      existingOrderProducts.map(async existingProduct => {
+        const dbProduct = await db
+          .select()
+          .from(products)
+          .where(eq(products.id, existingProduct.productId))
+          .limit(1)
+          .execute();
 
-      if (!dbProduct || dbProduct.length === 0) {
-        throw new Error(
-          `Product with id ${existingProduct.productId} not found`,
-        );
-      }
+        if (!dbProduct || dbProduct.length === 0) {
+          throw new Error(
+            `Product with id ${existingProduct.productId} not found`,
+          );
+        }
 
-      const updatedQty = dbProduct[0].qty + existingProduct.quantity;
+        const updatedQty = dbProduct[0].qty + existingProduct.quantity;
 
-      if (Number.isNaN(updatedQty)) {
-        throw new Error(
-          `Invalid quantity for product with id ${existingProduct.productId}`,
-        );
-      }
+        if (Number.isNaN(updatedQty)) {
+          throw new Error(
+            `Invalid quantity for product with id ${existingProduct.productId}`,
+          );
+        }
 
-      await db
-        .update(products)
-        .set({
-          qty: updatedQty,
-        })
-        .where(eq(products.id, existingProduct.productId));
-    }
+        await db
+          .update(products)
+          .set({
+            qty: updatedQty,
+          })
+          .where(eq(products.id, existingProduct.productId));
+      }),
+    );
 
     // Remove existing products for the order
     await db.delete(orderProducts).where(eq(orderProducts.orderId, orderId));
