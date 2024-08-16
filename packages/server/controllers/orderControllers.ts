@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import type { ProductData } from "../../../types/products";
 import { db } from "../db/config";
 import { orderProducts, orders, products } from "../db/schema";
+import { getOrderByNumber } from "../services/order-services";
 
 interface CreateOrderRequest extends Request {
   body: {
@@ -14,35 +15,20 @@ interface CreateOrderRequest extends Request {
 export const getOrderByOrderNumber = async (req: Request, res: Response) => {
   const { orderNumber } = req.params;
 
-  try {
-    const order = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.orderNumber, orderNumber))
-      .limit(1)
-      .execute();
+  const [ok, order, orderProductsList, error] =
+    await getOrderByNumber(orderNumber);
 
-    if (!order || order.length === 0) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    const orderProductsList = await db
-      .select()
-      .from(orderProducts)
-      .where(eq(orderProducts.orderId, order[0].id))
-      .execute();
-
-    res.status(200).json({ ...order[0], productsData: orderProductsList });
-  } catch (error) {
+  if (!ok) {
     if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "Internal server error" });
+      return res.status(500).json({ message: error.message });
     }
+    return res.status(500).json({ message: "Internal server error" });
   }
+
+  return res.status(200).json({ ...order, productsData: orderProductsList });
 };
 
-export const getOrders = async (req: Request, res: Response) => {
+export const getOrders = async (_: Request, res: Response) => {
   try {
     const allOrders = await db.select().from(orders);
     res.status(200).json(allOrders);
@@ -230,11 +216,6 @@ export const updateOrder = async (req: CreateOrderRequest, res: Response) => {
       });
 
       const updatedQty = dbProduct.qty - product.quantity;
-      if (Number.isNaN(updatedQty)) {
-        throw new Error(
-          `Invalid quantity for product with id ${product.productId}`,
-        );
-      }
 
       await db
         .update(products)
