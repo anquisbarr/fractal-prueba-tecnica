@@ -1,9 +1,7 @@
-import { eq } from "drizzle-orm";
 import type { Request, Response } from "express";
-import { db } from "../db/config";
-import { products } from "../db/schema";
 import {
   createProductService,
+  deleteProductService,
   getAllProducts,
   updateProductService,
 } from "../services/product-services";
@@ -78,14 +76,10 @@ export const updateProduct = async (req: Request, res: Response) => {
 export const deleteProduct = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  try {
-    await db.delete(products).where(eq(products.id, Number.parseInt(id)));
-    res.json({ message: "Product deleted successfully" });
-  } catch (error) {
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "Internal server error" });
-    }
+  const [ok, err] = await deleteProductService(id);
+
+  if (!ok && err) {
+    return res.status(500).json({ message: err.message });
   }
+  return res.status(200).json({ message: "Product deleted successfully" });
 };

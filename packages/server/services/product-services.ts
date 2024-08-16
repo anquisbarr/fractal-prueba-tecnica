@@ -10,10 +10,7 @@ export const getAllProducts = async (): Promise<
     const allProducts = await db.select().from(products).execute();
     return [true, allProducts, undefined];
   } catch (e) {
-    if (e instanceof Error) {
-      return [false, undefined, new Error("No se pudo obtener los pedidos")];
-    }
-    return [false, undefined, new Error("Internal server error")];
+    return [false, undefined, new Error("No se pudo obtener los pedidos")];
   }
 };
 
@@ -35,7 +32,7 @@ export const createProductService = async ({
 
     return [true, insertId, undefined];
   } catch (e) {
-    return [false, undefined, new Error("Internal server error")];
+    return [false, undefined, new Error("No se pudo crear el producto")];
   }
 };
 
@@ -54,6 +51,17 @@ export const updateProductService = async ({
       .where(eq(products.id, Number.parseInt(id)));
     return [true, undefined];
   } catch (e) {
-    return [false, new Error("Internal server error")];
+    return [false, new Error("No se pudo actualizar el producto")];
+  }
+};
+
+export const deleteProductService = async (
+  id: string,
+): Promise<[boolean, Error?]> => {
+  try {
+    await db.delete(products).where(eq(products.id, Number.parseInt(id)));
+    return [true, undefined];
+  } catch (error) {
+    return [false, new Error("No se pudo eliminar el producto")];
   }
 };
