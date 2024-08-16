@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Request, Response } from "express";
 import { db } from "../db/config";
 import { products } from "../db/schema";
+import { getAllProducts } from "../services/product-services";
 
 interface CreateProductRequest extends Request {
   body: {
@@ -12,16 +13,11 @@ interface CreateProductRequest extends Request {
 }
 
 export const getProducts = async (req: Request, res: Response) => {
-  try {
-    const allProducts = await db.select().from(products);
-    res.json(allProducts);
-  } catch (error) {
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "Internal server error" });
-    }
+  const [ok, products, err] = await getAllProducts();
+  if (!ok && err) {
+    return res.status(500).json({ message: err.message });
   }
+  return res.status(200).json(products);
 };
 
 export const createProduct = async (
@@ -31,7 +27,6 @@ export const createProduct = async (
   const { name, unitPrice, qty } = req.body;
 
   try {
-    // Perform the insert operation
     const [result] = await db.insert(products).values({
       name,
       unitPrice: unitPrice.toFixed(2),
