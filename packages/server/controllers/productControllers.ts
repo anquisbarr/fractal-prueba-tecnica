@@ -31,17 +31,18 @@ export const createProduct = async (
   const { name, unitPrice, qty } = req.body;
 
   try {
-    const insertResult = await db.insert(products).values({
+    // Perform the insert operation
+    const [result] = await db.insert(products).values({
       name,
-      unitPrice: unitPrice.toFixed(2), // Convertir el precio unitario a cadena con dos decimales
+      unitPrice: unitPrice.toFixed(2),
       qty,
     });
 
-    const productId = Number(insertResult.insertId);
+    const insertId = result.insertId;
 
     res
       .status(201)
-      .json({ message: "Product created successfully", productId });
+      .json({ message: "Product created successfully", productId: insertId });
   } catch (error) {
     if (error instanceof Error) {
       res.status(500).json({ message: error.message });
