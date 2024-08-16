@@ -12,6 +12,29 @@ interface CreateOrderRequest extends Request {
   };
 }
 
+export const createOrder = async (req: CreateOrderRequest, res: Response) => {
+  const { orderNumber, productsData } = req.body;
+
+  if (!productsData || productsData.length === 0) {
+    return res
+      .status(400)
+      .json({ message: "productsData is required and should not be empty" });
+  }
+
+  const [ok, orderId, err] = await createOrderService({
+    orderNumber,
+    productsData,
+  });
+  if (!ok && err) {
+    return res.status(500).json({
+      message: err.message,
+    });
+  }
+  return res
+    .status(201)
+    .json({ message: "Order created successfully", orderId });
+};
+
 export const getOrderByOrderNumber = async (req: Request, res: Response) => {
   const { orderNumber } = req.params;
 
