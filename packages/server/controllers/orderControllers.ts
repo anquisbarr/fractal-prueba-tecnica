@@ -1,9 +1,14 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { Request, Response } from "express";
 import type { ProductData } from "../../../types/products";
 import { db } from "../db/config";
-import { orderProducts, orders, products } from "../db/schema";
-import { getOrderByNumber } from "../services/order-services";
+import { orderProducts, orders } from "../db/schema";
+import {
+  createOrderService,
+  getAllOrders,
+  getOrderByNumber,
+  updateOrderByNumber,
+} from "../services/order-services";
 
 interface CreateOrderRequest extends Request {
   body: {
@@ -52,111 +57,14 @@ export const getOrderByOrderNumber = async (req: Request, res: Response) => {
 };
 
 export const getOrders = async (_: Request, res: Response) => {
-  try {
-    const allOrders = await db.select().from(orders);
-    res.status(200).json(allOrders);
-  } catch (error) {
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "Internal server error" });
-    }
+  const [ok, allOrders, err] = await getAllOrders();
+
+  if (!ok && err) {
+    return res.status(500).json({
+      message: err.message,
+    });
   }
-};
-
-export const createOrder = async (req: CreateOrderRequest, res: Response) => {
-  const { orderNumber, productsData } = req.body;
-
-  if (!productsData || productsData.length === 0) {
-    return res
-      .status(400)
-      .json({ message: "productsData is required and should not be empty" });
-  }
-
-  try {
-    const productIds = productsData.map(p => p.productId);
-    const dbProducts = await db
-      .select()
-      .from(products)
-      .where(inArray(products.id, productIds));
-
-    // Calculate the final price
-    const finalPrice = productsData
-      .reduce((total: number, product: ProductData) => {
-        const dbProduct = dbProducts.find(p => p.id === product.productId);
-        if (!dbProduct) {
-          throw new Error(`Product with id ${product.productId} not found`);
-        }
-        const unitPrice = Number.parseFloat(dbProduct.unitPrice);
-        if (Number.isNaN(unitPrice)) {
-          throw new Error(
-            `Invalid unit price for product with id ${product.productId}`,
-          );
-        }
-        return total + unitPrice * product.quantity;
-      }, 0)
-      .toFixed(2);
-
-    const numberOfProducts = productsData.reduce(
-      (total, product) => total + product.quantity,
-      0,
-    );
-
-    const [insertResult] = await db
-      .insert(orders)
-      .values({
-        orderNumber,
-        date: new Date(),
-        numberOfProducts,
-        finalPrice: Number.parseFloat(finalPrice).toString(),
-        status: "Pending",
-      })
-      .execute();
-
-    const orderId = insertResult.insertId; // Capturar el ID de la inserción
-
-    Promise.all(
-      productsData.map(async product => {
-        await db.insert(orderProducts).values({
-          orderId,
-          productId: product.productId,
-          quantity: product.quantity,
-        });
-
-        // Ensure quantity is a number before updating
-        const dbProduct = dbProducts.find(p => p.id === product.productId);
-        if (!dbProduct) {
-          throw new Error(`Product with id ${product.productId} not found`);
-        }
-
-        const updatedQty =
-          typeof dbProduct.qty === "string"
-            ? Number.parseFloat(dbProduct.qty) - product.quantity
-            : dbProduct.qty - product.quantity;
-
-        if (Number.isNaN(updatedQty)) {
-          throw new Error(
-            `Invalid quantity for product with id ${product.productId}`,
-          );
-        }
-
-        await db
-          .update(products)
-          .set({
-            qty: updatedQty,
-          })
-          .where(eq(products.id, product.productId));
-      }),
-    );
-
-    res.status(201).json({ message: "Order created successfully", orderId });
-  } catch (error) {
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
+  return res.status(200).json({ orders: allOrders });
 };
 
 export const updateOrder = async (req: CreateOrderRequest, res: Response) => {
@@ -169,117 +77,14 @@ export const updateOrder = async (req: CreateOrderRequest, res: Response) => {
       .json({ message: "productsData is required and should not be empty" });
   }
 
-  try {
-    const existingOrder = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.orderNumber, orderNumber))
-      .limit(1)
-      .execute();
+  const [ok, error] = await updateOrderByNumber({ orderNumber, productsData });
 
-    if (!existingOrder || existingOrder.length === 0) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    const orderId = existingOrder[0].id;
-
-    // Fetch existing order products and db products for updating
-    const [existingOrderProducts, dbProducts] = await Promise.all([
-      db.select().from(orderProducts).where(eq(orderProducts.orderId, orderId)),
-      db
-        .select()
-        .from(products)
-        .where(
-          inArray(
-            products.id,
-            productsData.map(p => p.productId),
-          ),
-        ),
-    ]);
-
-    const productQtyUpdates = existingOrderProducts.map(existingProduct => {
-      const dbProduct = dbProducts.find(
-        p => p.id === existingProduct.productId,
-      );
-      if (!dbProduct) {
-        throw new Error(
-          `Product with id ${existingProduct.productId} not found`,
-        );
-      }
-
-      const updatedQty = dbProduct.qty + existingProduct.quantity;
-      if (Number.isNaN(updatedQty)) {
-        throw new Error(
-          `Invalid quantity for product with id ${existingProduct.productId}`,
-        );
-      }
-
-      return db
-        .update(products)
-        .set({ qty: updatedQty })
-        .where(eq(products.id, existingProduct.productId));
-    });
-
-    await Promise.all(productQtyUpdates);
-
-    // Remove existing products for the order
-    await db.delete(orderProducts).where(eq(orderProducts.orderId, orderId));
-
-    // Insert new products and update quantities
-    const productOperations = productsData.map(async product => {
-      const dbProduct = dbProducts.find(p => p.id === product.productId);
-      if (!dbProduct) {
-        throw new Error(`Product with id ${product.productId} not found`);
-      }
-
-      await db.insert(orderProducts).values({
-        orderId,
-        productId: product.productId,
-        quantity: product.quantity,
-      });
-
-      const updatedQty = dbProduct.qty - product.quantity;
-
-      await db
-        .update(products)
-        .set({ qty: updatedQty })
-        .where(eq(products.id, product.productId));
-    });
-
-    await Promise.all(productOperations);
-
-    const finalPrice = productsData
-      .reduce((total, product) => {
-        const dbProduct = dbProducts.find(p => p.id === product.productId);
-
-        if (!dbProduct) {
-          throw new Error(`Product with id ${product.productId} not found`);
-        }
-
-        const unitPrice = Number.parseFloat(dbProduct.unitPrice);
-        return total + unitPrice * product.quantity;
-      }, 0)
-      .toFixed(2);
-
-    const numberOfProducts = productsData.reduce(
-      (total, product) => total + product.quantity,
-      0,
-    );
-
-    await db
-      .update(orders)
-      .set({
-        numberOfProducts,
-        finalPrice: Number.parseFloat(finalPrice).toString(),
-      })
-      .where(eq(orders.id, orderId));
-
-    res.status(200).json({ message: "Order updated successfully" });
-  } catch (error) {
-    res.status(500).json({
-      message: error instanceof Error ? error.message : "Internal server error",
+  if (!ok && error) {
+    return res.status(500).json({
+      message: error.message,
     });
   }
+  return res.status(200).json({ message: "Order updated successfully" });
 };
 
 export const updateOrderStatus = async (req: Request, res: Response) => {
