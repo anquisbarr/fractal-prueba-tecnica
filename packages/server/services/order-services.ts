@@ -241,3 +241,39 @@ export const updateOrderByNumber = async ({
 
   return [true, undefined];
 };
+
+export const updateOrderStatusByNumber = async ({
+  orderNumber,
+  status,
+}: {
+  orderNumber: string;
+  status: string;
+}): Promise<[boolean, Error?]> => {
+  try {
+    const existingOrder = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.orderNumber, orderNumber))
+      .limit(1)
+      .execute();
+
+    if (!existingOrder || existingOrder.length === 0) {
+      return [false, new Error("Order not found")];
+    }
+
+    if (existingOrder[0].status === "Completed") {
+      return [false, new Error("Completed orders cannot be modified")];
+    }
+
+    await db
+      .update(orders)
+      .set({
+        status,
+      })
+      .where(eq(orders.orderNumber, orderNumber));
+
+    return [true, undefined];
+  } catch (error) {
+    return [false, new Error("Error updating order status")];
+  }
+};
