@@ -6,7 +6,7 @@ import {
   getOrders,
   updateOrder,
   updateOrderStatus,
-} from "../controllers/orderControllers";
+} from "../controllers/order-controller";
 const router = Router();
 
 router.get("/orders", getOrders);
