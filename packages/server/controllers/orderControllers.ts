@@ -32,7 +32,7 @@ export const getOrderByOrderNumber = async (req: Request, res: Response) => {
       .where(eq(orderProducts.orderId, order[0].id))
       .execute();
 
-    res.json({ ...order[0], productsData: orderProductsList });
+    res.status(200).json({ ...order[0], productsData: orderProductsList });
   } catch (error) {
     if (error instanceof Error) {
       res.status(500).json({ message: error.message });
@@ -45,7 +45,7 @@ export const getOrderByOrderNumber = async (req: Request, res: Response) => {
 export const getOrders = async (req: Request, res: Response) => {
   try {
     const allOrders = await db.select().from(orders);
-    res.json(allOrders);
+    res.status(200).json(allOrders);
   } catch (error) {
     if (error instanceof Error) {
       res.status(500).json({ message: error.message });
@@ -106,37 +106,39 @@ export const createOrder = async (req: CreateOrderRequest, res: Response) => {
 
     const orderId = insertResult.insertId; // Capturar el ID de la inserción
 
-    for (const product of productsData) {
-      await db.insert(orderProducts).values({
-        orderId,
-        productId: product.productId,
-        quantity: product.quantity,
-      });
+    Promise.all(
+      productsData.map(async product => {
+        await db.insert(orderProducts).values({
+          orderId,
+          productId: product.productId,
+          quantity: product.quantity,
+        });
 
-      // Ensure quantity is a number before updating
-      const dbProduct = dbProducts.find(p => p.id === product.productId);
-      if (!dbProduct) {
-        throw new Error(`Product with id ${product.productId} not found`);
-      }
+        // Ensure quantity is a number before updating
+        const dbProduct = dbProducts.find(p => p.id === product.productId);
+        if (!dbProduct) {
+          throw new Error(`Product with id ${product.productId} not found`);
+        }
 
-      const updatedQty =
-        typeof dbProduct.qty === "string"
-          ? Number.parseFloat(dbProduct.qty) - product.quantity
-          : dbProduct.qty - product.quantity;
+        const updatedQty =
+          typeof dbProduct.qty === "string"
+            ? Number.parseFloat(dbProduct.qty) - product.quantity
+            : dbProduct.qty - product.quantity;
 
-      if (Number.isNaN(updatedQty)) {
-        throw new Error(
-          `Invalid quantity for product with id ${product.productId}`,
-        );
-      }
+        if (Number.isNaN(updatedQty)) {
+          throw new Error(
+            `Invalid quantity for product with id ${product.productId}`,
+          );
+        }
 
-      await db
-        .update(products)
-        .set({
-          qty: updatedQty,
-        })
-        .where(eq(products.id, product.productId));
-    }
+        await db
+          .update(products)
+          .set({
+            qty: updatedQty,
+          })
+          .where(eq(products.id, product.productId));
+      }),
+    );
 
     res.status(201).json({ message: "Order created successfully", orderId });
   } catch (error) {
@@ -172,60 +174,84 @@ export const updateOrder = async (req: CreateOrderRequest, res: Response) => {
 
     const orderId = existingOrder[0].id;
 
-    // Fetch existing order products
-    const existingOrderProducts = await db
-      .select()
-      .from(orderProducts)
-      .where(eq(orderProducts.orderId, orderId))
-      .execute();
+    // Fetch existing order products and db products for updating
+    const [existingOrderProducts, dbProducts] = await Promise.all([
+      db.select().from(orderProducts).where(eq(orderProducts.orderId, orderId)),
+      db
+        .select()
+        .from(products)
+        .where(
+          inArray(
+            products.id,
+            productsData.map(p => p.productId),
+          ),
+        ),
+    ]);
 
-    await Promise.allSettled(
-      existingOrderProducts.map(async existingProduct => {
-        const dbProduct = await db
-          .select()
-          .from(products)
-          .where(eq(products.id, existingProduct.productId))
-          .limit(1)
-          .execute();
+    const productQtyUpdates = existingOrderProducts.map(existingProduct => {
+      const dbProduct = dbProducts.find(
+        p => p.id === existingProduct.productId,
+      );
+      if (!dbProduct) {
+        throw new Error(
+          `Product with id ${existingProduct.productId} not found`,
+        );
+      }
 
-        if (!dbProduct || dbProduct.length === 0) {
-          throw new Error(
-            `Product with id ${existingProduct.productId} not found`,
-          );
-        }
+      const updatedQty = dbProduct.qty + existingProduct.quantity;
+      if (Number.isNaN(updatedQty)) {
+        throw new Error(
+          `Invalid quantity for product with id ${existingProduct.productId}`,
+        );
+      }
 
-        const updatedQty = dbProduct[0].qty + existingProduct.quantity;
+      return db
+        .update(products)
+        .set({ qty: updatedQty })
+        .where(eq(products.id, existingProduct.productId));
+    });
 
-        if (Number.isNaN(updatedQty)) {
-          throw new Error(
-            `Invalid quantity for product with id ${existingProduct.productId}`,
-          );
-        }
-
-        await db
-          .update(products)
-          .set({
-            qty: updatedQty,
-          })
-          .where(eq(products.id, existingProduct.productId));
-      }),
-    );
+    await Promise.all(productQtyUpdates);
 
     // Remove existing products for the order
     await db.delete(orderProducts).where(eq(orderProducts.orderId, orderId));
 
-    const productIds = productsData.map(p => p.productId);
-    const dbProducts = await db
-      .select()
-      .from(products)
-      .where(inArray(products.id, productIds));
+    // Insert new products and update quantities
+    const productOperations = productsData.map(async product => {
+      const dbProduct = dbProducts.find(p => p.id === product.productId);
+      if (!dbProduct) {
+        throw new Error(`Product with id ${product.productId} not found`);
+      }
+
+      await db.insert(orderProducts).values({
+        orderId,
+        productId: product.productId,
+        quantity: product.quantity,
+      });
+
+      const updatedQty = dbProduct.qty - product.quantity;
+      if (Number.isNaN(updatedQty)) {
+        throw new Error(
+          `Invalid quantity for product with id ${product.productId}`,
+        );
+      }
+
+      await db
+        .update(products)
+        .set({ qty: updatedQty })
+        .where(eq(products.id, product.productId));
+    });
+
+    await Promise.all(productOperations);
 
     const finalPrice = productsData
-      .reduce((total: number, product: ProductData) => {
+      .reduce((total, product) => {
         const dbProduct = dbProducts.find(p => p.id === product.productId);
+
         if (!dbProduct) {
           throw new Error(`Product with id ${product.productId} not found`);
         }
+
         const unitPrice = Number.parseFloat(dbProduct.unitPrice);
         return total + unitPrice * product.quantity;
       }, 0)
@@ -235,36 +261,6 @@ export const updateOrder = async (req: CreateOrderRequest, res: Response) => {
       (total, product) => total + product.quantity,
       0,
     );
-
-    for (const product of productsData) {
-      await db.insert(orderProducts).values({
-        orderId,
-        productId: product.productId,
-        quantity: product.quantity,
-      });
-
-      const dbProduct = dbProducts.find(p => p.id === product.productId);
-      if (!dbProduct) {
-        throw new Error(`Product with id ${product.productId} not found`);
-      }
-
-      const updatedQty =
-        typeof dbProduct.qty === "string"
-          ? Number.parseFloat(dbProduct.qty) - product.quantity
-          : dbProduct.qty - product.quantity;
-      if (Number.isNaN(updatedQty)) {
-        throw new Error(
-          `Invalid quantity for product with id ${product.productId}`,
-        );
-      }
-
-      await db
-        .update(products)
-        .set({
-          qty: updatedQty,
-        })
-        .where(eq(products.id, product.productId));
-    }
 
     await db
       .update(orders)
@@ -276,11 +272,9 @@ export const updateOrder = async (req: CreateOrderRequest, res: Response) => {
 
     res.status(200).json({ message: "Order updated successfully" });
   } catch (error) {
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "Internal server error" });
-    }
+    res.status(500).json({
+      message: error instanceof Error ? error.message : "Internal server error",
+    });
   }
 };
 
