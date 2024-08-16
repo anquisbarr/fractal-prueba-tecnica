@@ -277,3 +277,32 @@ export const updateOrderStatusByNumber = async ({
     return [false, new Error("Error updating order status")];
   }
 };
+
+export const deleteOrderByNumber = async (
+  id: string,
+): Promise<[boolean, Error?]> => {
+  try {
+    const existingOrder = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, Number.parseInt(id)))
+      .limit(1)
+      .execute();
+
+    if (!existingOrder || existingOrder.length === 0) {
+      return [false, new Error("Order not found")];
+    }
+
+    if (existingOrder[0].status === "Completed") {
+      return [false, new Error("Completed orders cannot be modified")];
+    }
+    await db
+      .delete(orderProducts)
+      .where(eq(orderProducts.orderId, Number.parseInt(id)));
+
+    await db.delete(orders).where(eq(orders.id, Number.parseInt(id)));
+    return [true, undefined];
+  } catch (error) {
+    return [false, new Error("Error deleting order")];
+  }
+};
