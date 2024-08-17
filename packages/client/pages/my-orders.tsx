@@ -14,17 +14,9 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import type { Order } from "../../../types/products";
 import DeleteAlertModal from "../components/delete-alert-modal";
 import api from "../config/api";
-
-interface Order {
-  id: number;
-  orderNumber: string;
-  date: string;
-  numberOfProducts: number;
-  finalPrice: number;
-  status: string;
-}
 
 const MyOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -34,7 +26,7 @@ const MyOrders: React.FC = () => {
   useEffect(() => {
     api
       .get("/orders")
-      .then(response => setOrders(response.data))
+      .then(response => setOrders(response.data.orders))
       .catch(error => console.error("Error fetching orders:", error));
   }, []);
 
